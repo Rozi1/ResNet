@@ -15,7 +15,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training')
-parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=300, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='res50')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128),only used for train')
@@ -44,7 +44,7 @@ def main():
     if use_gpu:
         float = True if args.bit == 32 else False
         if args.arch == 'res50':
-            model = resnet50(float=float)
+            model = resnet50()
         elif args.arch == 'res56':
             model = resnet56_cifar(float=float)
         else:
@@ -52,7 +52,7 @@ def main():
             return
         if not float:
             for m in model.modules():
-                if isinstance(m, QuantConv2d):
+                if isinstance(m, nn.Conv2d):
                     m.weight_quant = weight_quantize_fn(w_bit=args.bit)
                     m.act_grid = build_power_value(args.bit)
                     m.act_alq = act_quantization(args.bit, m.act_grid)
@@ -112,7 +112,7 @@ def main():
    
     if args.evaluate:
         validate(testloader, model, criterion)
-        model.module.show_params()
+        
         return
     writer = SummaryWriter(comment=fdir.replace('result/', ''))
     """ Now let's take a look at some examples. We'll use the test_loader for this."""
@@ -131,7 +131,7 @@ def main():
         # train for one epoch
         # model.module.record_weight(writer, epoch)
         if epoch%10 == 1:
-            model.module.show_params()
+            """model.module.show_params()"""
         # model.module.record_clip(writer, epoch)
         train(trainloader, model, criterion, optimizer, epoch)
 

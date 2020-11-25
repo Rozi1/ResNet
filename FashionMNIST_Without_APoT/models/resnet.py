@@ -5,80 +5,38 @@ Reference:
 [2] K. He, X. Zhang, S. Ren, and J. Sun. Identity mappings in deep residual networks. In ECCV, 2016.
 '''
 
-import torch
-import torch.nn as nn
-import math
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-from models.quant_layer import *
-
 __all__ = ['ResNet','resnet50']
 model_urls = {
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth'
 }
 
 def conv3x3(in_planes, out_planes, stride=1):
-    " 3x3 convolution with padding "
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
-
-
-def Quantconv3x3(in_planes, out_planes, stride=1):
-    " 3x3 quantized convolution with padding "
-    return QuantConv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
-
-
-
-class BasicBlock(nn.Module):
-    expansion=1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None, float=False):
-        super(BasicBlock, self).__init__()
-        if float:
-            self.conv1 = conv3x3(inplanes, planes, stride)
-            self.conv2 = conv3x3(planes, planes)
-        else:
-            self.conv1 = Quantconv3x3(inplanes, planes, stride)
-            self.conv2 = Quantconv3x3(planes, planes)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 class Bottleneck(nn.Module):
-    expansion=4
+    expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
+        self.conv1 = conv1x1(inplanes, planes)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv2 = conv3x3(planes, planes, stride)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes*4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes*4)
+        self.conv3 = conv1x1(planes, planes * self.expansion)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
     def forward(self, x):
-        residual = x
+        identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
@@ -92,9 +50,9 @@ class Bottleneck(nn.Module):
         out = self.bn3(out)
 
         if self.downsample is not None:
-            residual = self.downsample(x)
+            identity = self.downsample(x)
 
-        out += residual
+        out += identity
         out = self.relu(out)
 
         return out
@@ -102,7 +60,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, float=False, zero_init_residual=False):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3,
@@ -134,14 +92,12 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1, float=False):
+    def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                QuantConv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False)
-                if float is False else nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1,
-                                                 stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion)
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.BatchNorm2d(planes * block.expansion),
             )
 
         layers = []
@@ -168,10 +124,8 @@ class ResNet(nn.Module):
         x = self.fc(x)
 
         return x
-    def show_params(self):
-        for m in self.modules():
-            if isinstance(m, QuantConv2d):
-                m.show_params()
+    
+ 
 
 def resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
