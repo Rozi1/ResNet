@@ -58,7 +58,7 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNet_Cifar(nn.Module):
+class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=10, float=False):
         super(ResNet_Cifar, self).__init__()
