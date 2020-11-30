@@ -50,13 +50,7 @@ def main():
         else:
             print('Architecture not support!')
             return
-        if not float:
-            for m in model.modules():
-                if isinstance(m, nn.Conv2d):
-                    m.weight_quant = weight_quantize_fn(w_bit=args.bit)
-                    m.act_grid = build_power_value(args.bit)
-                    m.act_alq = act_quantization(args.bit, m.act_grid)
-
+        
         model = nn.DataParallel(model).cuda()
         criterion = nn.CrossEntropyLoss().cuda()
         model_params = []
