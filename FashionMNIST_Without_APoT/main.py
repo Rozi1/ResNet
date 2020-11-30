@@ -100,15 +100,16 @@ def main():
     ]))
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2)
 
-    test_dataset = torchvision.datasets.FashionMNIST(
+    test_dataset = torchvision.datasets.CIFAR10(
         root='./data',
         train=False,
         download=True,
         transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ]))
+            transforms.ToTensor(),
+            normalize,
+        ]))
     testloader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=2)
+
    
     if args.evaluate:
         validate(testloader, model, criterion)
