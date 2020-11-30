@@ -44,7 +44,7 @@ def main():
     if use_gpu:
         float = True if args.bit == 32 else False
         if args.arch == 'res50':
-            model = resnet50()
+            model = Resnet50()
         elif args.arch == 'res56':
             model = resnet56_cifar(float=float)
         else:
